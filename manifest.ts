@@ -55,15 +55,19 @@ const everyPageOf = (site: string): string => `${new URL(site).origin}/*`;
 const BACKGROUND_SCRIPT = "background.js";
 
 /**
- * How the background script is declared. Chrome and Safari run it as a service
- * worker. Firefox has none for extensions and runs the same file as an event
- * page, under a key that Chrome warns about when it finds it.
+ * How the background script is declared. Chrome runs it as a service worker,
+ * and has no other way. Firefox and Safari run the same file as an event page,
+ * under a key that Chrome warns about when it finds it.
+ *
+ * Safari could run it as a service worker too, and must not: a request it makes
+ * from one goes out without the user's login on the server, where the same
+ * request from an event page carries it. Syncing rests on that login.
  */
 function background(target: Target): Record<string, unknown> {
   return {
-    ...(target === "firefox"
-      ? { scripts: [BACKGROUND_SCRIPT] }
-      : { service_worker: BACKGROUND_SCRIPT }),
+    ...(target === "chrome"
+      ? { service_worker: BACKGROUND_SCRIPT }
+      : { scripts: [BACKGROUND_SCRIPT] }),
     // The build emits ES modules, and the background script imports from one.
     type: "module",
   };
@@ -134,7 +138,8 @@ export function manifest(target: Target): Record<string, unknown> {
     },
     options_ui: {
       page: "options.html",
-      open_in_tab: true,
+      // Safari does not know this key, and Apple's packager says so each time.
+      ...(target === "safari" ? {} : { open_in_tab: true }),
     },
     ...BROWSER_SPECIFIC[target],
   };
