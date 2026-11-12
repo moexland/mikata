@@ -117,7 +117,9 @@ export function manifest(target: Target): Record<string, unknown> {
     manifest_version: 3,
     name: "Mikata",
     version: pkg.version,
-    description: "Sync the score exports from your servers to Kamaitachi in one click.",
+    // The stores show this line under the name. It says what Mikata is for in
+    // general; which tracker it works with today is for the longer texts.
+    description: "Sync your scores from game servers to score trackers in one click.",
     permissions: ["storage", "scripting"],
     // Kamaitachi, and the page it redirects to once the user has approved.
     host_permissions: [everyPageOf(TRACKER_ORIGIN), everyPageOf(OAUTH_REDIRECT_URI)],
