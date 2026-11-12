@@ -93,11 +93,13 @@ const BROWSER_SPECIFIC: Record<Target, Record<string, unknown>> = {
           required: ["websiteContent"],
         },
       },
-      // Firefox for Android, which otherwise goes by the version above. It came
-      // to asking about data two versions after the desktop did.
-      gecko_android: {
-        strict_min_version: "142.0",
-      },
+      // Firefox for Android is left out for now: Mikata has not been tried on
+      // it, and without this key it is offered for the desktop only. It came
+      // to asking about data two versions after the desktop did, hence 142.
+      //
+      // gecko_android: {
+      //   strict_min_version: "142.0",
+      // },
     },
   },
 
