@@ -110,6 +110,8 @@ export const remote = {
   exportNeedsTab: false,
   /** Origins of the servers whose login has expired. */
   loggedOutOrigins: [] as string[],
+  /** What a server sends in place of the export when it wants the user to sign in. */
+  signedOutBody: "",
   /** Origin of every export request received, in order. */
   exportRequests: [] as string[],
   tokenPermissions: { submit_score: true } as Record<string, boolean>,
@@ -130,6 +132,7 @@ export function resetRemote(overrides: Partial<typeof remote> = {}): void {
     exportBody: sampleExport,
     exportNeedsTab: false,
     loggedOutOrigins: [],
+    signedOutBody: "<html>login</html>",
     exportRequests: [],
     tokenPermissions: { submit_score: true },
     importErrors: [
@@ -158,7 +161,10 @@ const listener = {
       remote.exportRequests.push(requestOrigin);
 
       if (remote.loggedOutOrigins.includes(requestOrigin) || (remote.exportNeedsTab && !fromTab)) {
-        return new Response("<html>login</html>", { headers: { "content-type": "text/html" } });
+        // Either way the status says all is well, as servers tend to have it.
+        const type = remote.signedOutBody.startsWith("<") ? "text/html" : "application/json";
+
+        return new Response(remote.signedOutBody, { headers: { "content-type": type } });
       }
       return new Response(remote.exportBody, { headers: { "content-type": "application/json" } });
     }

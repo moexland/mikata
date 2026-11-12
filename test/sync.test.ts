@@ -142,6 +142,34 @@ test("falls back to an open server tab when the background request is not logged
   expect(remote.uploads[0]!.fromTab).toBe(false);
 });
 
+// What a server was seen to answer without a login: a few words of JSON under
+// an HTTP status of 200. The status it means is only in the text. It looks
+// nothing like a login page, and is no more of an export than one.
+const signedOutMessage = JSON.stringify({ message: "Authentication required", status: 403 });
+
+test("falls back to an open server tab when the background request gets a message in place of the export", async () => {
+  resetRemote({ exportNeedsTab: true, signedOutBody: signedOutMessage });
+  browser.openTabs = [{ id: 7, url: `${origin}/dashboard`, discarded: false }];
+
+  await runSync();
+
+  expect(finalStatus()).toMatchObject({ phase: "done", results: [{ outcome: "imported" }] });
+  expect(remote.exportRequests).toHaveLength(2);
+  expect(remote.uploads).toHaveLength(1);
+});
+
+test("takes a message in place of the export for an expired login, not for an export it cannot read", async () => {
+  resetRemote({ loggedOutOrigins: [origin], signedOutBody: signedOutMessage });
+
+  await runSync();
+
+  expect(finalStatus()).toMatchObject({
+    phase: "done",
+    results: [{ server: origin, outcome: "failed", needsLogin: true, message: "Signed out" }],
+  });
+  expect(remote.uploads).toHaveLength(0);
+});
+
 test("stops at the first server when Kamaitachi rejects the token", async () => {
   resetBrowser({
     servers: [server(origin), server(secondOrigin)],
@@ -187,7 +215,9 @@ test("points to settings when no server has been added", async () => {
 });
 
 test("reports an export that is not BATCH-MANUAL without uploading it", async () => {
-  resetRemote({ exportBody: JSON.stringify([{ a: 1 }]) });
+  // It has scores, so it is an export of some kind, but says nothing of the game.
+  resetRemote({ exportBody: JSON.stringify({ scores: [{ identifier: "1" }] }) });
+  browser.openTabs = [{ id: 7, url: `${origin}/dashboard`, discarded: false }];
 
   await runSync();
 
@@ -205,6 +235,8 @@ test("reports an export that is not BATCH-MANUAL without uploading it", async ()
     ],
   });
   expect(remote.uploads).toHaveLength(0);
+  // The login is plainly in order, so there is nothing a tab could do better.
+  expect(remote.exportRequests).toHaveLength(1);
 });
 
 test("skips the upload when the export has no scores", async () => {

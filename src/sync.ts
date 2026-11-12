@@ -169,36 +169,73 @@ async function performRequestViaTab(
   }
 }
 
+interface BatchManual extends JsonObject {
+  scores: unknown[];
+}
+
+/** The data as a BATCH-MANUAL document, or null if it is not one. */
+function asBatchManual(data: unknown): BatchManual | null {
+  if (!isObject(data) || !isObject(data.meta)) {
+    return null;
+  }
+
+  return typeof data.meta.game === "string" && Array.isArray(data.scores)
+    ? (data as BatchManual)
+    : null;
+}
+
 interface ScoreExport {
-  data: unknown;
+  batch: BatchManual;
+  /** The export as the server sent it. */
   text: string;
 }
 
-function parseExport(raw: RawResponse | null): ScoreExport | null {
+/**
+ * What a response holds: an export; "other" for something that set out to be
+ * an export and is not one Mikata can read; or null for no export at all.
+ *
+ * A server that wants the user to sign in rarely says so with an error status.
+ * It sends its login page, or a few words of JSON, with a status that says all
+ * is well. Neither has anything of an export about it, and both count as none.
+ */
+function readExport(raw: RawResponse | null): ScoreExport | "other" | null {
   if (!raw?.ok) {
     return null;
   }
 
-  // With an expired login the response is usually the login page's HTML, which is not JSON.
   const data = parseJSON(raw.text);
-  return isObject(data) ? { data, text: raw.text } : null;
+  const batch = asBatchManual(data);
+
+  if (batch) {
+    return { batch, text: raw.text };
+  }
+  return isObject(data) && ("meta" in data || "scores" in data) ? "other" : null;
 }
 
 async function fetchExport(server: string): Promise<ScoreExport> {
   const request: PageRequest = { url: server + EXPORT_PATH };
 
-  const direct = await performRequest(request);
-  let parsed = parseExport(direct);
-  let last = direct;
+  let last = await performRequest(request);
+  let found = readExport(last);
 
-  if (!parsed) {
+  // No export usually means the browser left the login out of a request made
+  // from the background, so the same request is tried from a tab of the site.
+  if (found === null) {
     const viaTab = await performRequestViaTab(server, request);
-    parsed = parseExport(viaTab);
-    last = viaTab ?? direct;
+
+    if (viaTab) {
+      last = viaTab;
+      found = readExport(viaTab);
+    }
   }
 
-  if (parsed) {
-    return parsed;
+  if (found === "other") {
+    throw new SyncError("Unsupported export format", {
+      detail: "The export is not a BATCH-MANUAL document: meta.game or scores is missing.",
+    });
+  }
+  if (found) {
+    return found;
   }
 
   if (last.status === 0) {
@@ -214,21 +251,6 @@ async function fetchExport(server: string): Promise<ScoreExport> {
   }
 
   throw new SyncError(`Server error (${last.status})`);
-}
-
-interface BatchManual extends JsonObject {
-  scores: unknown[];
-}
-
-/** The data as a BATCH-MANUAL document, or null if it is not one. */
-function asBatchManual(data: unknown): BatchManual | null {
-  if (!isObject(data) || !isObject(data.meta)) {
-    return null;
-  }
-
-  return typeof data.meta.game === "string" && Array.isArray(data.scores)
-    ? (data as BatchManual)
-    : null;
 }
 
 /**
@@ -400,15 +422,7 @@ async function syncServer(
   const { origin } = server;
 
   await report("fetching");
-  const { data, text } = await fetchExport(origin);
-  const batch = asBatchManual(data);
-
-  if (batch === null) {
-    throw new SyncError("Unsupported export format", {
-      detail: "The export is not a BATCH-MANUAL document: meta.game or scores is missing.",
-    });
-  }
-
+  const { batch, text } = await fetchExport(origin);
   const submitted = batch.scores.length;
 
   if (submitted === 0) {
