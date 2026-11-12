@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mikata settings</title>
+    <link rel="stylesheet" href="/src/ui.css" />
+  </head>
+  <body class="options">
+    <h1>Mikata settings</h1>
+
+    <section>
+      <h2>Servers</h2>
+      <p class="help muted">
+        The sites you sign in to when downloading your scores, one for each game. Mikata uses the
+        login you already have in this browser to request <code>/rest/playlog/export</code> from
+        each of them.
+      </p>
+
+      <ul id="server-list"></ul>
+      <p id="server-empty" class="muted">No servers added yet.</p>
+
+      <div class="actions">
+        <button id="add-server" class="primary" type="button">Add server</button>
+      </div>
+      <p id="server-message" role="status"></p>
+    </section>
+
+    <section>
+      <h2>Kamaitachi</h2>
+      <p id="auth-state" role="status"></p>
+      <div class="actions">
+        <button id="authorize" class="primary" type="button">Authorize</button>
+        <button id="revoke" type="button" hidden>Remove authorization</button>
+      </div>
+      <p id="auth-help-before" class="help muted">
+        Authorizing gives Mikata a token that can only submit scores. The token stays on this
+        device, and you can remove or revoke it at any time.
+      </p>
+      <p id="auth-help-after" class="help muted" hidden>
+        Mikata can only submit scores. Removing the authorization deletes the token here; to revoke
+        it completely, delete the matching API key under Integrations on your Kamaitachi profile.
+      </p>
+
+      <div id="client-missing" hidden>
+        <p class="error">
+          This build of Mikata has no Kamaitachi OAuth2 client configured, so authorizing is not
+          available yet.
+        </p>
+        <p class="help muted">
+          For developers: create an OAuth client under Integrations on your Kamaitachi profile, set
+          its Redirect URI to the address below, and request only the
+          <code>submit_score</code> permission. Then put the client ID and client secret in
+          <code>.env.local</code> and rebuild.
+        </p>
+        <p><code id="redirect-uri"></code></p>
+      </div>
+    </section>
+
+    <template id="server-row">
+      <li>
+        <span class="server-label"></span>
+        <span class="server-times muted" hidden></span>
+        <button type="button">Edit</button>
+      </li>
+    </template>
+
+    <dialog id="server-dialog" aria-labelledby="server-dialog-title">
+      <form id="server-form" method="dialog">
+        <h2 id="server-dialog-title"></h2>
+
+        <div class="field">
+          <label for="server-address">Address</label>
+          <input
+            id="server-address"
+            type="text"
+            inputmode="url"
+            autocapitalize="none"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="wumeng.example.net"
+            required
+          />
+          <p class="help muted">Everything after the domain is ignored.</p>
+        </div>
+
+        <div class="field">
+          <label for="server-times">Play times are in</label>
+          <select id="server-times"></select>
+          <p id="server-times-help" class="help muted">
+            Most servers give play times in UTC. If this one gives them in its own time zone, choose
+            that zone, and Mikata corrects the times before uploading.
+          </p>
+          <p id="server-times-advice" class="help muted advice" role="status" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="server-name">Name</label>
+          <input id="server-name" type="text" maxlength="40" autocomplete="off" />
+          <p class="help muted">Optional. Shown in the list in place of the address.</p>
+          <p id="server-name-suggestions" class="help muted" hidden></p>
+        </div>
+
+        <p id="server-dialog-message" role="status"></p>
+
+        <div class="actions">
+          <button id="server-remove" type="button">Remove</button>
+          <button id="server-cancel" type="button">Cancel</button>
+          <button id="server-save" class="primary" type="submit"></button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/options.ts"></script>
+  </body>
+</html>

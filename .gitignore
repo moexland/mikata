@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-safari/
+preview/
+
+# Local settings, the OAuth client among them
+*.local
+
+.DS_Store
+.idea/

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mikata</title>
+    <link rel="stylesheet" href="/src/ui.css" />
+  </head>
+  <body class="popup">
+    <h1>Mikata</h1>
+    <div class="summary">
+      <p id="status" role="status"></p>
+      <p id="time" class="muted"></p>
+    </div>
+    <div id="detail"></div>
+    <ul id="results" hidden></ul>
+    <div class="actions">
+      <button id="sync" class="primary" type="button">Sync</button>
+      <button id="settings" type="button">Settings</button>
+    </div>
+    <script type="module" src="/src/popup.ts"></script>
+  </body>
+</html>

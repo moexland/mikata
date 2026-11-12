@@ -1,0 +1,26 @@
+{
+  "name": "mikata",
+  "version": "0.6.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && vite build --mode safari",
+    "preview": "bun run preview.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "lint": "oxlint",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "hash": "bun run hash.ts"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/bun": "latest",
+    "@types/chrome": "^0.3.7",
+    "oxfmt": "^0.78.0",
+    "oxlint": "^1.93.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

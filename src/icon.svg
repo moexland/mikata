@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+	<!--
+		Two sheets, one in front and one behind it to the upper right, fanned apart by
+		a few degrees each way. The build renders this file into the PNG sizes that
+		the manifest lists.
+
+		The lines of text and the gap between the sheets are cut out with masks, not
+		painted in the background colour, so they stay see-through wherever the
+		artwork is shown without its tile.
+	-->
+	<defs>
+		<!--
+			Three lines of text on the front sheet, placed so the blank above the first
+			equals the blank below the last. Applied to the sheet itself, so it turns with it.
+		-->
+		<mask id="lines" maskUnits="userSpaceOnUse" x="-10" y="-10" width="68" height="68">
+			<rect x="-10" y="-10" width="68" height="68" fill="#fff" />
+			<path
+				d="M16 22.5h9M16 27.5h9M16 32.5h4.5"
+				stroke="#000"
+				stroke-width="2"
+				stroke-linecap="round"
+			/>
+		</mask>
+
+		<!--
+			The front sheet grown by 1.25 on every side, which is what gets removed from
+			the back sheet. It carries the front sheet's rotation, so the gap keeps the
+			same width all the way round.
+		-->
+		<mask id="gap" maskUnits="userSpaceOnUse" x="-10" y="-10" width="68" height="68">
+			<rect x="-10" y="-10" width="68" height="68" fill="#fff" />
+			<rect
+				x="10.25"
+				y="14.25"
+				width="20.5"
+				height="26.5"
+				rx="4.25"
+				fill="#000"
+				transform="rotate(-4 20.5 27.5)"
+			/>
+		</mask>
+	</defs>
+
+	<rect id="tile" width="48" height="48" rx="10.5" fill="#e91e63" />
+
+	<g id="sheets" fill="#fff">
+		<rect
+			x="11.5"
+			y="15.5"
+			width="18"
+			height="24"
+			rx="3"
+			mask="url(#lines)"
+			transform="rotate(-4 20.5 27.5)"
+		/>
+		<!-- The mask sits on a wrapper, because a mask on the sheet itself would turn with it. -->
+		<g mask="url(#gap)">
+			<rect id="back" x="18.5" y="8.5" width="18" height="24" rx="3" transform="rotate(4 27.5 20.5)" />
+		</g>
+	</g>
+</svg>
