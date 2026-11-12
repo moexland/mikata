@@ -18,5 +18,14 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true
   },
-  "include": ["src", "test", "hash.ts", "manifest.ts", "preview.ts", "vite.config.ts"]
+  "include": [
+    "src",
+    "test",
+    "hash.ts",
+    "icons.ts",
+    "manifest.ts",
+    "package.ts",
+    "preview.ts",
+    "vite.config.ts"
+  ]
 }
