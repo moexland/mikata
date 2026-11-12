@@ -39,7 +39,8 @@
       </p>
       <p id="auth-help-after" class="help muted" hidden>
         Mikata can only submit scores. Removing the authorization deletes the token here; to revoke
-        it completely, delete the matching API key under Integrations on your Kamaitachi profile.
+        it completely, open Service Integrations on your Kamaitachi profile and delete Mikata's key
+        under API Keys.
       </p>
 
       <div id="client-missing" hidden>
@@ -48,8 +49,8 @@
           available yet.
         </p>
         <p class="help muted">
-          For developers: create an OAuth client under Integrations on your Kamaitachi profile, set
-          its Redirect URI to the address below, and request only the
+          For developers: create an OAuth client under Service Integrations on your Kamaitachi
+          profile, set its Redirect URI to the address below, and request only the
           <code>submit_score</code> permission. Then put the client ID and client secret in
           <code>.env.local</code> and rebuild.
         </p>
