@@ -41,15 +41,16 @@ depends on the system, and the icons are not drawn by it but kept in `icons/`.
 
 ## Developing
 
-| Command             | What it does                                                 |
-| ------------------- | ------------------------------------------------------------ |
-| `bun run test`      | Runs the tests.                                              |
-| `bun run typecheck` | Checks the types.                                            |
-| `bun run lint`      | Lints with oxlint.                                           |
-| `bun run fmt`       | Formats with oxfmt.                                          |
-| `bun run preview`   | Renders every state of the UI to `preview/index.html`.       |
-| `bun run icons`     | Draws `icons/` again from `src/icon.svg`. Commit the result. |
-| `bun run package`   | Makes the archives for the stores, in `dist/`.               |
+| Command             | What it does                                                              |
+| ------------------- | ------------------------------------------------------------------------- |
+| `bun run test`      | Runs the tests.                                                           |
+| `bun run typecheck` | Checks the types.                                                         |
+| `bun run lint`      | Lints with oxlint.                                                        |
+| `bun run fmt`       | Formats with oxfmt.                                                       |
+| `bun run preview`   | Renders every state of the UI to `preview/index.html`.                    |
+| `bun run icons`     | Draws `icons/` again from `src/icon.svg`. Commit the result.              |
+| `bun run package`   | Makes the archives for the stores, in `dist/`.                            |
+| `bun run xcode`     | Wraps the Safari build in an app and builds it for this Mac. Needs Xcode. |
 
 ## License
 

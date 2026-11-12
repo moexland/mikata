@@ -14,7 +14,8 @@
     "fmt:check": "oxfmt --check",
     "hash": "bun run hash.ts",
     "icons": "bun run icons.ts",
-    "package": "bun run package.ts"
+    "package": "bun run package.ts",
+    "xcode": "bun run xcode.ts"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
