@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [trunk]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # The system and the Node.js that Mozilla's reviewers rebuild the Firefox
+    # upload on. Building here shows that the build does not depend on the
+    # machine it was written on.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.14.0
+
+      # The version comes from "packageManager" in package.json.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - run: bun install --frozen-lockfile
+      - run: bun run fmt:check
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun run build
+
+      # For comparing with a build made elsewhere. There is no OAuth client
+      # here, so the settings page's script differs from a released one.
+      - name: List what was built
+        run: find dist -type f | sort | xargs sha256sum
