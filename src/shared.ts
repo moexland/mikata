@@ -81,6 +81,36 @@ export type SyncProgress =
 /** Progress of the latest sync, written by the background script and rendered by the popup. */
 export type SyncStatus = SyncProgress & { time: number };
 
+/**
+ * The latest sync's progress with one server left out, for when that server is
+ * taken off the list: what was kept about it goes with it.
+ *
+ * Returns the status unchanged when the server has no part in it, and null when
+ * leaving the server out leaves nothing worth showing.
+ */
+export function withoutServer(status: SyncStatus, origin: string): SyncStatus | null {
+  // A problem that stopped the whole sync is about no server in particular.
+  if (status.phase === "error") {
+    return status;
+  }
+
+  // Progress left behind by a sync that was interrupted while on this server
+  // cannot be told without naming it.
+  if (status.phase === "running" && status.server === origin) {
+    return null;
+  }
+
+  const results = status.results.filter((result) => result.server !== origin);
+
+  if (results.length === status.results.length) {
+    return status;
+  }
+  if (status.phase === "done" && results.length === 0) {
+    return null;
+  }
+  return { ...status, results };
+}
+
 /** Everything the extension keeps in storage.local. */
 export interface StoredState {
   /** The servers to sync from, in order. */

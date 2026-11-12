@@ -14,6 +14,7 @@ import {
   serverLabel,
   type StoredState,
   type TrackerAuth,
+  withoutServer,
 } from "./shared.ts";
 import { recommendedTimeOffset, suggestedNames } from "./server-hints.ts";
 import { formatOffset, TIME_OFFSETS } from "./time-offset.ts";
@@ -98,6 +99,23 @@ function saveServers(next: Server[]): Promise<void> {
   return api.storage.local.set({ servers });
 }
 
+/**
+ * Lets go of a server that is no longer in the list under this address: what
+ * the last sync recorded about it, and the access to its site.
+ */
+async function forgetServer(origin: string): Promise<void> {
+  const { status } = await api.storage.local.get<StoredState>(["status"]);
+  const kept = status ? withoutServer(status, origin) : null;
+
+  if (status && kept === null) {
+    await api.storage.local.remove("status");
+  } else if (kept && kept !== status) {
+    await api.storage.local.set({ status: kept });
+  }
+
+  await releaseAccess(origin);
+}
+
 /** Gives back access to a site, unless a server or Kamaitachi still needs it. */
 async function releaseAccess(origin: string): Promise<void> {
   const pattern = hostPattern(origin);
@@ -123,7 +141,7 @@ async function removeServer(server: Server): Promise<void> {
   await saveServers(servers.filter((other) => other.origin !== server.origin));
   renderServers();
   report("Removed", server);
-  await releaseAccess(server.origin);
+  await forgetServer(server.origin);
 }
 
 /** A small button that puts a suggested value in place when pressed. */
@@ -365,8 +383,10 @@ dialogForm.addEventListener("submit", (event) => {
       dialog.close();
       report(previous === null ? "Added" : "Saved", server);
 
+      // A server given a new address is, to everything kept by address, a
+      // server removed and another added.
       if (previous !== null && previous !== origin) {
-        await releaseAccess(previous);
+        await forgetServer(previous);
       }
     })
     .catch((err: unknown) =>
