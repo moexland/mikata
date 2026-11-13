@@ -494,7 +494,7 @@ interface GalleryData {
   redirect: string;
 }
 
-/** Runs in the gallery page: builds one iframe per state and handles the theme switch. */
+/** Runs in the gallery page: builds one iframe per state and answers the control panel. */
 function gallery(data: GalleryData): void {
   // The popup is 21.5rem wide plus 1rem of padding each side, at its 14px root.
   const widths: Record<Page, number> = { popup: 329, options: 600 };
@@ -515,6 +515,9 @@ function gallery(data: GalleryData): void {
 
   const inline = (code: string): string => `<script>${code}</script>`;
 
+  /** The id the stylesheet has in each frame, by which the colours are changed later. */
+  const STYLESHEET_ID = "preview-stylesheet";
+
   const frameDocument = (frame: Frame, id: number, theme: string): string => {
     const spec = JSON.stringify({ ...frame, id, redirect: data.redirect }).replaceAll(
       "<",
@@ -525,7 +528,10 @@ function gallery(data: GalleryData): void {
       : data.scripts[frame.page];
 
     return data.pages[frame.page]
-      .replace(data.stylesheetTag, () => `<style>${forceTheme(data.css, theme)}</style>`)
+      .replace(
+        data.stylesheetTag,
+        () => `<style id="${STYLESHEET_ID}">${forceTheme(data.css, theme)}</style>`,
+      )
       .replace(
         data.scriptTags[frame.page],
         () => inline(`(${data.stub})(${spec})`) + inline(script),
@@ -570,14 +576,43 @@ function gallery(data: GalleryData): void {
     });
   }
 
-  const render = (theme: string): void => {
-    document.documentElement.dataset.theme = theme;
-    document.querySelectorAll<HTMLButtonElement>("header button").forEach((button) => {
-      button.setAttribute("aria-pressed", String(button.dataset.theme === theme));
+  // What the control panel is set to. Each of its buttons names one of these
+  // and a value for it, so a further setting is a line here, a group of buttons
+  // in the panel, and whatever `apply` has to do about it.
+  const settings = {
+    theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
+  };
+  type Setting = keyof typeof settings;
+
+  // The choice outlives the page, which is made anew each time the UI changes.
+  const SAVED = "mikata-preview-settings";
+  try {
+    Object.assign(settings, JSON.parse(localStorage.getItem(SAVED) ?? "{}"));
+  } catch {
+    // Nothing saved, or nowhere to save: the defaults stand.
+  }
+
+  const buttons = document.querySelectorAll<HTMLButtonElement>(".controls button");
+
+  const apply = (): void => {
+    document.documentElement.dataset.theme = settings.theme;
+    buttons.forEach((button) => {
+      const chosen = settings[button.dataset.setting as Setting] === button.dataset.value;
+      button.setAttribute("aria-pressed", String(chosen));
     });
 
     data.frames.forEach((frame, id) => {
-      iframes[id]!.srcdoc = frameDocument(frame, id, theme);
+      const iframe = iframes[id]!;
+      // A frame that is showing its page already is given the other colours
+      // where it stands. Loading it again would put it back at the start of
+      // what it was made to show, and make the gallery jump while it did.
+      const stylesheet = iframe.contentDocument?.getElementById(STYLESHEET_ID);
+
+      if (stylesheet) {
+        stylesheet.textContent = forceTheme(data.css, settings.theme);
+      } else {
+        iframe.srcdoc = frameDocument(frame, id, settings.theme);
+      }
     });
   };
 
@@ -589,11 +624,19 @@ function gallery(data: GalleryData): void {
     }
   });
 
-  document.querySelectorAll<HTMLButtonElement>("header button").forEach((button) => {
-    button.addEventListener("click", () => render(button.dataset.theme!));
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      settings[button.dataset.setting as Setting] = button.dataset.value!;
+      try {
+        localStorage.setItem(SAVED, JSON.stringify(settings));
+      } catch {
+        // See above.
+      }
+      apply();
+    });
   });
 
-  render(matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  apply();
 }
 
 // ─── Assembling the file ──────────────────────────────────────────────────────
@@ -694,14 +737,18 @@ const html = `<!doctype html>
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Mikata UI preview</title>
 		<style>
-			:root { --page: #f1f1f4; --ink: #1c1c1e; --soft: #6b6b70; --edge: #d2d2d8; }
-			:root[data-theme="dark"] { --page: #111113; --ink: #f2f2f4; --soft: #a0a0a8; --edge: #3a3a40; }
-			body { margin: 0; padding: 24px; background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, sans-serif; }
-			header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-			h1 { margin: 0 auto 0 0; font-size: 18px; }
+			:root { --page: #f1f1f4; --panel: #fff; --ink: #1c1c1e; --soft: #6b6b70; --edge: #d2d2d8; }
+			:root[data-theme="dark"] { --page: #111113; --panel: #222226; --ink: #f2f2f4; --soft: #a0a0a8; --edge: #3a3a40; }
+			/* The room at the bottom lets the last row be scrolled clear of the control panel. */
+			body { margin: 0; padding: 24px 24px 96px; background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, sans-serif; }
+			h1 { margin: 0 0 8px; font-size: 18px; }
 			h2 { margin: 32px 0 12px; font-size: 15px; }
-			header button { padding: 4px 12px; border: 1px solid var(--edge); border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
-			header button[aria-pressed="true"] { border-color: var(--ink); font-weight: 600; }
+			/* The control panel stays in the corner of the window however far the page is scrolled. */
+			.controls { position: fixed; right: 16px; bottom: 16px; z-index: 1; display: flex; align-items: center; gap: 20px; padding: 8px 10px 8px 14px; border: 1px solid var(--edge); border-radius: 12px; background: var(--panel); box-shadow: 0 6px 24px rgb(0 0 0 / 0.2); }
+			.controls [role="group"] { display: flex; align-items: center; gap: 4px; }
+			.controls .label { margin-right: 6px; color: var(--soft); font-size: 12px; }
+			.controls button { padding: 4px 12px; border: 1px solid var(--edge); border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+			.controls button[aria-pressed="true"] { border-color: var(--ink); font-weight: 600; }
 			.grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
 			figure { margin: 0; }
 			figcaption { margin-bottom: 6px; color: var(--soft); font-size: 12px; }
@@ -709,12 +756,15 @@ const html = `<!doctype html>
 		</style>
 	</head>
 	<body>
-		<header>
-			<h1>Mikata UI preview</h1>
-			<button type="button" data-theme="light">Light</button>
-			<button type="button" data-theme="dark">Dark</button>
-		</header>
+		<h1>Mikata UI preview</h1>
 		<main></main>
+		<aside class="controls" aria-label="Preview controls">
+			<div role="group" aria-labelledby="theme-label">
+				<span class="label" id="theme-label">Theme</span>
+				<button type="button" data-setting="theme" data-value="light">Light</button>
+				<button type="button" data-setting="theme" data-value="dark">Dark</button>
+			</div>
+		</aside>
 		<script>(${galleryCode})(${galleryData})</script>
 	</body>
 </html>
