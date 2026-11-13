@@ -9,6 +9,7 @@ import {
   api,
   errorMessage,
   hostPattern,
+  type Need,
   type Server,
   type ServerResult,
   type StoredState,
@@ -42,8 +43,8 @@ export function isRunning(): boolean {
 interface SyncErrorOptions {
   /** Technical specifics. The popup keeps them out of sight until asked. */
   detail?: string;
-  /** The server wants the user to sign in again. */
-  needsLogin?: boolean;
+  /** What the user can do about it, if one thing would put it right. */
+  needs?: Need;
   /** Kamaitachi turned the token down. The sync stops and the authorization is marked expired. */
   authorizationRejected?: boolean;
 }
@@ -54,13 +55,13 @@ interface SyncErrorOptions {
  */
 class SyncError extends Error {
   readonly detail: string | undefined;
-  readonly needsLogin: boolean;
+  readonly needs: Need | undefined;
   readonly authorizationRejected: boolean;
 
   constructor(message: string, options: SyncErrorOptions = {}) {
     super(message);
     this.detail = options.detail;
-    this.needsLogin = options.needsLogin ?? false;
+    this.needs = options.needs;
     this.authorizationRejected = options.authorizationRejected ?? false;
   }
 }
@@ -244,7 +245,7 @@ async function fetchExport(server: string): Promise<ScoreExport> {
 
   if (last.ok || last.status === 401 || last.status === 403) {
     throw new SyncError("Signed out", {
-      needsLogin: true,
+      needs: "login",
       detail:
         "The server did not return score data, which usually means the login has expired. Sign in, keep that tab open, and sync again.",
     });
@@ -421,6 +422,18 @@ async function syncServer(
 ): Promise<ServerResult> {
   const { origin } = server;
 
+  // Access to a site can be taken back in the browser's settings, and in Safari
+  // can run out after a day. The request would go out all the same and its
+  // answer be kept from Mikata, which looks no different from a server that is
+  // down. So the question is put to the browser first.
+  if (!(await api.permissions.contains({ origins: [hostPattern(origin)] }))) {
+    throw new SyncError("Access not granted", {
+      needs: "access",
+      detail:
+        "The browser is not letting Mikata read this server's site, so its scores can't be fetched. Allow access and sync again.",
+    });
+  }
+
   await report("fetching");
   const { batch, text } = await fetchExport(origin);
   const submitted = batch.scores.length;
@@ -506,7 +519,7 @@ export async function runSync(): Promise<void> {
           outcome: "failed",
           message,
           ...(detail === undefined ? {} : { detail }),
-          needsLogin: err instanceof SyncError && err.needsLogin,
+          ...(err instanceof SyncError && err.needs ? { needs: err.needs } : {}),
         });
       }
     }

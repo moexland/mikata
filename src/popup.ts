@@ -11,6 +11,7 @@
 import { byId } from "./dom.ts";
 import {
   api,
+  hostPattern,
   type IsRunningReply,
   type Message,
   type ServerResult,
@@ -138,6 +139,58 @@ function resultDetails(result: ServerResult): HTMLDetailsElement[] {
   return details;
 }
 
+/**
+ * The button for the one thing that would put a failure right, if there is
+ * such a thing. `onAllowed` is called once the access a row asks for is there.
+ */
+function remedy(
+  result: Extract<ServerResult, { outcome: "failed" }>,
+  onAllowed: () => void,
+): HTMLButtonElement | null {
+  if (!result.needs) {
+    return null;
+  }
+
+  const button = document.createElement("button");
+  button.type = "button";
+
+  if (result.needs === "login") {
+    button.textContent = "Sign in";
+    button.addEventListener("click", () => void api.tabs.create({ url: result.server }));
+  } else {
+    const site = { origins: [hostPattern(result.server)] };
+    const settle = (allowed: boolean): void => {
+      if (allowed) {
+        button.disabled = true;
+        button.textContent = "Allowed";
+        onAllowed();
+      }
+    };
+
+    button.textContent = "Allow access";
+    // Allowing does not start a sync. Access tends to lapse for every server
+    // at once, and each sync sends each server's whole play log again: the
+    // user allows them one by one and then syncs once.
+    //
+    // The browser asks only if the request is made right here in the click
+    // handler, and some browsers close the popup while they ask. So the row
+    // also finds out for itself, each time it is drawn, whether it still
+    // stands.
+    button.addEventListener("click", () => {
+      void api.permissions
+        .request(site)
+        .then(settle)
+        .catch(() => {});
+    });
+    void api.permissions
+      .contains(site)
+      .then(settle)
+      .catch(() => {});
+  }
+
+  return button;
+}
+
 /** One row per server: its host, what happened, and the action or specifics that go with it. */
 function renderResults(results: ServerResult[]): void {
   resultsEl.replaceChildren();
@@ -153,20 +206,28 @@ function renderResults(results: ServerResult[]): void {
     name.textContent = nameOf(result.server);
     head.append(name);
 
-    if (result.outcome === "failed" && result.needsLogin) {
-      const open = document.createElement("button");
-      open.type = "button";
-      open.textContent = "Sign in";
-      open.addEventListener("click", () => void api.tabs.create({ url: result.server }));
-      head.append(open);
-    }
-
     const text = document.createElement("p");
     text.textContent = resultText(result);
-    item.append(head, text);
 
-    item.append(...resultDetails(result));
+    const details = resultDetails(result);
 
+    const action =
+      result.outcome === "failed"
+        ? remedy(result, () => {
+            // What the row said was true of the last sync and is so no longer.
+            item.classList.remove("failed");
+            text.textContent = "Ready to sync again.";
+            for (const block of details) {
+              block.remove();
+            }
+          })
+        : null;
+
+    if (action) {
+      head.append(action);
+    }
+
+    item.append(head, text, ...details);
     resultsEl.append(item);
   }
 

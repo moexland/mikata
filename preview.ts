@@ -67,16 +67,23 @@ const importedWithNotes: ServerResult = {
 const needsLogin: ServerResult = {
   server: chunithm,
   outcome: "failed",
-  needsLogin: true,
+  needs: "login",
   message: "Signed out",
   detail:
     "The server did not return score data, which usually means the login has expired. Sign in, keep that tab open, and sync again.",
+};
+const noAccess: ServerResult = {
+  server: chunithm,
+  outcome: "failed",
+  needs: "access",
+  message: "Access not granted",
+  detail:
+    "The browser is not letting Mikata read this server's site, so its scores can't be fetched. Allow access and sync again.",
 };
 const empty: ServerResult = { server: ongeki, outcome: "empty" };
 const unreachable: ServerResult = {
   server: wacca,
   outcome: "failed",
-  needsLogin: false,
   message: "Can't reach the server",
   detail: "Failed to fetch",
 };
@@ -191,6 +198,11 @@ const frames: Frame[] = [
     title: "Done, mixed results, details opened",
     store: mixedResults,
     act: 'document.querySelectorAll("details").forEach((details) => (details.open = true));',
+  },
+  {
+    page: "popup",
+    title: "Done, access to a server withdrawn",
+    store: withStatus({ phase: "done", results: [imported, noAccess, empty] }),
   },
   {
     page: "popup",
@@ -397,6 +409,7 @@ function frameStub(spec: StubSpec): void {
     },
     permissions: {
       request: async () => spec.permission !== false,
+      contains: async () => false,
       remove: async () => true,
     },
     tabs: {

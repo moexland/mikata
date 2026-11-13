@@ -34,6 +34,12 @@ export function serverLabel(server: Server): string {
 /** What the sync is doing for the server it is currently on. */
 export type SyncStep = "fetching" | "uploading" | "processing";
 
+/**
+ * The one thing that would put a failure right, where there is one: signing in
+ * to the server again, or letting Mikata reach the server's site again.
+ */
+export type Need = "login" | "access";
+
 /** How the sync went for one server. */
 export type ServerResult =
   | {
@@ -59,7 +65,7 @@ export type ServerResult =
       message: string;
       /** Technical specifics, shown only when the user asks for them. */
       detail?: string;
-      needsLogin: boolean;
+      needs?: Need;
     };
 
 export type SyncProgress =

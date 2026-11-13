@@ -34,6 +34,8 @@ export const browser = {
   /** Called when the code under test opens a tab; returns the new tab's id. */
   onTabCreated: (_url: string): number => 1,
   currentTabId: 5,
+  /** Match patterns of the sites the extension has no access to. */
+  withheldSites: [] as string[],
   removedTabs: [] as number[],
   activatedTabs: [] as number[],
   tabUpdated: event<TabUpdate>(),
@@ -44,6 +46,7 @@ export function resetBrowser(store: Record<string, unknown> = {}): void {
   browser.store = store;
   browser.statuses = [];
   browser.openTabs = [];
+  browser.withheldSites = [];
   browser.onTabCreated = () => 1;
   browser.removedTabs = [];
   browser.activatedTabs = [];
@@ -65,6 +68,10 @@ const fakeChrome = {
         Object.assign(browser.store, items);
       },
     },
+  },
+  permissions: {
+    contains: async ({ origins }: { origins: string[] }) =>
+      origins.every((pattern) => !browser.withheldSites.includes(pattern)),
   },
   tabs: {
     query: async () => browser.openTabs,

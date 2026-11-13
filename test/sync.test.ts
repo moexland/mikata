@@ -123,7 +123,7 @@ test("keeps going when one server's login has expired", async () => {
   expect(finalStatus()).toMatchObject({
     phase: "done",
     results: [
-      { server: origin, outcome: "failed", needsLogin: true, message: "Signed out" },
+      { server: origin, outcome: "failed", needs: "login", message: "Signed out" },
       { server: secondOrigin, ...imported },
     ],
   });
@@ -165,9 +165,25 @@ test("takes a message in place of the export for an expired login, not for an ex
 
   expect(finalStatus()).toMatchObject({
     phase: "done",
-    results: [{ server: origin, outcome: "failed", needsLogin: true, message: "Signed out" }],
+    results: [{ server: origin, outcome: "failed", needs: "login", message: "Signed out" }],
   });
   expect(remote.uploads).toHaveLength(0);
+});
+
+test("leaves a server alone when the browser no longer lets Mikata reach its site", async () => {
+  // A match pattern takes no port, so this covers the mock whatever its port.
+  browser.withheldSites = ["http://127.0.0.1/*"];
+
+  await runSync();
+
+  expect(finalStatus()).toMatchObject({
+    phase: "done",
+    results: [
+      { server: origin, outcome: "failed", needs: "access", message: "Access not granted" },
+    ],
+  });
+  // The request would have reached the server and come to nothing.
+  expect(remote.exportRequests).toEqual([]);
 });
 
 test("stops at the first server when Kamaitachi rejects the token", async () => {
@@ -227,13 +243,16 @@ test("reports an export that is not BATCH-MANUAL without uploading it", async ()
       {
         server: origin,
         outcome: "failed",
-        needsLogin: false,
         // The short name is what the popup shows; the technical explanation travels separately.
         message: "Unsupported export format",
         detail: expect.stringContaining("BATCH-MANUAL"),
       },
     ],
   });
+  // Nothing the user could do would put this right, so no action is offered.
+  expect(browser.statuses.at(-1)!.results).toEqual([
+    expect.not.objectContaining({ needs: expect.anything() }),
+  ]);
   expect(remote.uploads).toHaveLength(0);
   // The login is plainly in order, so there is nothing a tab could do better.
   expect(remote.exportRequests).toHaveLength(1);

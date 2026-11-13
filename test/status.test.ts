@@ -23,7 +23,7 @@ const failed = (server: string): ServerResult => ({
   server,
   outcome: "failed",
   message: "Signed out",
-  needsLogin: true,
+  needs: "login",
 });
 
 test("drops what a finished sync recorded about a server, and keeps the rest", () => {
